@@ -16,7 +16,7 @@ The V-RAG architecture utilizes a vision language model (VLM) to embed pages of 
 5. The query is passed through the VLM to get the query embedding
 6. The query embedding is used to search the vector database for similar embeddings
 7. The user query and images of the best matches from the search are passed again to a model that can understand images
-   - we use GPT4o or GPT4-mini in this demo
+   - we use GPT4o or GPT4o-mini in this demo
 8. The model generates a response based on the query and the images
 
 # How to run the demo?
@@ -38,17 +38,17 @@ Then, you can run the demo by following these steps:
 1. Install Python 3.11 or higher
 2. `pip install modal`
 3. `modal setup`
-3. `modal serve .\main.py`
+4. `modal serve .\main.py`
 
-# How to use the demo?
+# How to use the demo from the provided API?
 
-1. Open your browser and go to `http://localhost:8000/docs`
-2. Click on the `POST /files` endpoint
+1. Open your browser and go to the url provided by Modal and append `/docs` to the url
+2. Click on the `POST /collections` endpoint
 3. Click on the `Try it out` button
 4. Upload a PDF file
 5. Click on the `Execute` button
 
-This will index the PDF file in to in-memory vector database. This will take some time depending on the size of the PDF file and the GPU you are using in Modal.
+This will index the PDF file in to in-memory vector database. This will take some time depending on the size of the PDF file and the GPU you are using in Modal. The current demo is using a A10G GPU.
 
 You can now search for similar pages using the `POST /search` endpoint.
 
@@ -58,7 +58,7 @@ You can also use the frontend to interact with the API. To setup the frontend fo
 
 1. Install Node.js
 2. `cd frontend`
-   - modify you `.env` file and add your `VITE_BACKEND_URL`
+   - modify you `.env.development` file and add your `VITE_BACKEND_URL`
 3. `npm install`
 4. `npm run dev`
 
@@ -68,5 +68,6 @@ This will start the frontend on `http://localhost:5173`
 
 You can deploy the demo to Modal using the following steps:
 
-1. Build the frontend `npm run build` - this will create a `dist` folder
-1. `modal deploy .\main.py`
+1. Modify you `.env.production` file and add your `VITE_BACKEND_URL` for the production environment
+2. Build the frontend `npm run build` - this will create a `dist` folder
+3. `modal deploy .\main.py`
