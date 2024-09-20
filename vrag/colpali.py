@@ -1,26 +1,39 @@
 import os
-import torch
-import numpy as np
-from torch.utils.data import DataLoader, Dataset
-from tqdm import tqdm
-from colpali_engine.models.paligemma_colbert_architecture import ColPali
-from transformers import AutoProcessor
+from typing import AsyncGenerator, cast
+import modal
+from vrag.app import app
 
 
-class NumpyDataset(Dataset):
-    def __init__(self, numpy_list: list[np.ndarray]):
+img = (
+    modal.Image.debian_slim(python_version="3.11")
+    .pip_install(
+        "colpali_engine==0.3.0",
+        "torch",
+        "transformers==4.44.2",
+    )
+    .pip_install("numpy==2.1.1")
+)
+
+
+class NumpyDataset:
+    def __init__(self, numpy_list: list):
+        import numpy as np
+        import torch
+
+        self.np = np
+        self.torch = torch
         self.numpy_list = numpy_list
 
     def __len__(self) -> int:
         return len(self.numpy_list)
 
-    def __getitem__(self, idx) -> torch.Tensor:
+    def __getitem__(self, idx):
         sample = self.numpy_list[idx]
-        sample = torch.from_numpy(sample)
+        sample = self.torch.from_numpy(sample)
         return sample
 
 
-class StringListDataset(Dataset):
+class StringListDataset:
     def __init__(self, string_list: list[str]):
         self.string_list = string_list
 
@@ -32,22 +45,55 @@ class StringListDataset(Dataset):
         return sample
 
 
+def create_numpy_dataset_class(numpy_list: list):
+    from torch.utils.data import Dataset
+
+    class DynamicNumpyDataset(NumpyDataset, Dataset):
+        pass
+
+    return DynamicNumpyDataset(numpy_list)
+
+
+def create_stringlist_dataset_class(string_list: list[str]):
+    from torch.utils.data import Dataset
+
+    class DynamicStringListDataset(StringListDataset, Dataset):
+        pass
+
+    return DynamicStringListDataset(string_list)
+
+
+@app.cls(
+    gpu="A10G",
+    secrets=[modal.Secret.from_dotenv()],
+    cpu=4,
+    timeout=600,
+    container_idle_timeout=300,
+    image=img,
+)
 class ColPaliModel:
-    def __init__(
-        self,
-        model_name: str = "vidore/colpali-v1.2",
-        hf_model: str = "google/paligemma-3b-mix-448",
-    ):
-        self.model_name = model_name
-        self.hf_model = hf_model
-        self.token = os.environ.get("HF_TOKEN")
-        self.model = self.load_model()
-        self.processor = AutoProcessor.from_pretrained(
-            self.model_name, token=self.token
+    def __init__(self):
+        from transformers import PreTrainedModel
+        from colpali_engine.models.paligemma.colpali.processing_colpali import (
+            ColPaliProcessor,
         )
+
+        self.model_name = "vidore/colpali-v1.2"
+        self.hf_model = "vidore/colpaligemma-3b-pt-448-base"
+        self.token = os.environ.get("HF_TOKEN")
+        self.model: PreTrainedModel
+        self.processor: ColPaliProcessor
         self.mock_image = self.create_mock_image()
 
+    @modal.build()
+    @modal.enter()
     def load_model(self):
+        import torch
+        from colpali_engine.models import ColPali
+        from colpali_engine.models.paligemma.colpali.processing_colpali import (
+            ColPaliProcessor,
+        )
+
         if torch.cuda.is_available() and torch.cuda.mem_get_info()[1] >= 8 * 1024**3:
             device = torch.device("cuda")
             torch_type = torch.bfloat16
@@ -55,31 +101,36 @@ class ColPaliModel:
             device = torch.device("cpu")
             torch_type = torch.float32
 
-        model = ColPali.from_pretrained(
+        self.model = ColPali.from_pretrained(
             self.hf_model,
             torch_dtype=torch_type,
             device_map=device,
             token=self.token,
         )
 
-        model.load_adapter(self.model_name)
-        return model.eval()
+        self.model.load_adapter(self.model_name)
+
+        self.processor = cast(
+            ColPaliProcessor,
+            ColPaliProcessor.from_pretrained("google/paligemma-3b-mix-448"),
+        )
+
+        self.model.eval()
 
     def create_mock_image(self):
+        import numpy as np
+
         """Creates a blank 448x448 RGB image."""
         return 255 * np.ones((448, 448, 3), dtype=np.uint8)
 
-    def process_images(self, images: list[np.ndarray], max_length: int = 50):
-        """This function is modified version of the function
-        in colpali_processing_utils.py to remove PIL dependency.
-        """
+    def process_images(self, images: list):
+        """This function is modified version of the function in colpali_processing_utils.py to remove PIL dependency."""
         texts_doc = ["Describe the image."] * len(images)
         batch_doc = self.processor(
             text=texts_doc,
             images=images,
             return_tensors="pt",
             padding="longest",
-            max_length=max_length + self.processor.image_seq_length,
         )
         return batch_doc
 
@@ -87,23 +138,27 @@ class ColPaliModel:
         self,
         queries: list[str],
         max_length: int = 50,
+        suffix: str | None = None,
     ):
-        """This function is modified version of the function
-        in colpali_processing_utils.py to remove PIL dependency.
-        """
-        texts_query = []
+        """This function is modified version of the function in colpali_processing_utils.py to remove PIL dependency."""
+
+        if suffix is None:
+            suffix = "<pad>" * 10
+        texts_query: list[str] = []
+
         for query in queries:
-            query = f"Question: {query}<unused0><unused0><unused0><unused0><unused0>"
+            query = f"Question: {query}"
+            query += suffix  # add suffix (pad tokens)
             texts_query.append(query)
 
         batch_query = self.processor(
             images=[self.mock_image] * len(texts_query),
-            # NOTE: the image is not used in batch_query but it is required for calling the processor
             text=texts_query,
             return_tensors="pt",
             padding="longest",
             max_length=max_length + self.processor.image_seq_length,
         )
+
         del batch_query["pixel_values"]
 
         batch_query["input_ids"] = batch_query["input_ids"][
@@ -112,13 +167,17 @@ class ColPaliModel:
         batch_query["attention_mask"] = batch_query["attention_mask"][
             ..., self.processor.image_seq_length :
         ]
+
         return batch_query
 
+    @modal.method()
     def embed_queries(self, queries: list[str]) -> list[list[float]]:
-        """Embeds a text query and returns the vector representation for use in a vector database."""
+        import torch
+
+        from torch.utils.data import DataLoader
 
         dataloader = DataLoader(
-            StringListDataset(queries),
+            create_stringlist_dataset_class(queries),
             batch_size=2,
             shuffle=False,
             collate_fn=lambda x: self.process_queries(x),
@@ -137,22 +196,26 @@ class ColPaliModel:
         embeddings = [tensor.tolist() for tensor in query_embeddings]
         return embeddings[0]
 
-    def embed_images(self, images: list[np.ndarray]) -> list[list[list[float]]]:
-        """Run inference on images."""
-        embedding_list: list[torch.Tensor] = []
+    @modal.method()
+    async def embed_images(
+        self, images: list, batch_size: int
+    ) -> AsyncGenerator[list[list[float]], None]:
+        import torch
+        from torch.utils.data import DataLoader
 
         dataloader = DataLoader(
-            NumpyDataset(images),
-            batch_size=2,
+            create_numpy_dataset_class(images),
+            batch_size=batch_size,
             shuffle=False,
             collate_fn=lambda x: self.process_images(x),
         )
 
-        for batch_doc in tqdm(dataloader):
+        for batch_doc in dataloader:
             with torch.no_grad():
                 batch_doc = {k: v.to(self.model.device) for k, v in batch_doc.items()}
                 embeddings_doc = self.model(**batch_doc)
-            embedding_list.extend(torch.unbind(embeddings_doc.to("cpu")))
 
-        embeddings = [tensor.tolist() for tensor in embedding_list]
-        return embeddings
+            value: list[list[float]] = torch.unbind(embeddings_doc.to("cpu"))[
+                0
+            ].tolist()
+            yield value

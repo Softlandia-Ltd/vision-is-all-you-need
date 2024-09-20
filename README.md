@@ -36,8 +36,9 @@ HF_TOKEN=
 Then, you can run the demo by following these steps:
 
 1. Install Python 3.11 or higher
-2. `pip install -r requirements.txt`
-3. `fastapi dev` or `fastapi run`
+2. `pip install modal`
+3. `modal setup`
+3. `modal serve .\main.py`
 
 # How to use the demo?
 
@@ -47,6 +48,25 @@ Then, you can run the demo by following these steps:
 4. Upload a PDF file
 5. Click on the `Execute` button
 
-This will index the PDF file in to in-memory vector database. This will take some time depending on the size of the PDF file and your computer specs. On CPU this takes very long time. A CUDA GPU with at least 8GB of VRAM is recommended, and make sure you have CUDA-enabled PyTorch installed in your environment.
+This will index the PDF file in to in-memory vector database. This will take some time depending on the size of the PDF file and the GPU you are using in Modal.
 
 You can now search for similar pages using the `POST /search` endpoint.
+
+# Frontend
+
+You can also use the frontend to interact with the API. To setup the frontend for local development, follow these steps:
+
+1. Install Node.js
+2. `cd frontend`
+   - modify you `.env` file and add your `VITE_BACKEND_URL`
+3. `npm install`
+4. `npm run dev`
+
+This will start the frontend on `http://localhost:5173`
+
+# How to deploy the demo?
+
+You can deploy the demo to Modal using the following steps:
+
+1. Build the frontend `npm run build` - this will create a `dist` folder
+1. `modal deploy .\main.py`

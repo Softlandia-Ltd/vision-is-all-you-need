@@ -1,32 +1,128 @@
-from dotenv import load_dotenv
-from fastapi import FastAPI, UploadFile
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from vrag.vrag import VRAG
+import json
+from pathlib import Path
+from modal import Mount, Secret, asgi_app, Image
+from vrag.app import app
+from vrag.colpali import ColPaliModel
 
-load_dotenv()
+static_path = Path(__file__).with_name("frontend").joinpath("dist").resolve()
 
-app = FastAPI()
-VisionRAG = VRAG()
+img = (
+    Image.debian_slim(python_version="3.11")
+    .pip_install(
+        "openai==1.44.1",
+        "opencv_python_headless==4.10.0.84",
+        "pydantic==2.9.1",
+        "pypdfium2==4.30.0",
+        "fastapi==0.114.2",
+        "qdrant_client==1.11.2",
+        "sse-starlette==2.1.3",
+    )
+    .pip_install("numpy==2.1.1")
+)
+
+colpali = ColPaliModel()
 
 
-class SearchRequest(BaseModel):
-    query: str
+@app.function(
+    image=img,
+    mounts=[
+        Mount.from_local_python_packages("vrag"),
+        Mount.from_local_dir(static_path, remote_path="/assets"),
+    ],
+    secrets=[Secret.from_dotenv()],
+    concurrency_limit=1,
+    container_idle_timeout=300,
+    timeout=600,
+    allow_concurrent_inputs=10,
+)
+@asgi_app()
+def web():
+    from uuid import UUID
+    import uuid
+    from pydantic import BaseModel
+    from fastapi import FastAPI, UploadFile, File
+    from sse_starlette.sse import EventSourceResponse, ServerSentEvent
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.middleware.cors import CORSMiddleware
+    from vrag.vrag import VRAG
+    from vrag.qdrant_client import InMemoryQdrant
 
+    class SearchRequest(BaseModel):
+        query: str
+        instance_id: UUID
 
-@app.post("/files")
-async def create_upload_file(file: UploadFile):
-    content = file.file.read()
-    name = file.filename if file.filename else "default"
-    await VisionRAG.add_pdf(name, content)
-    return {"id": file.filename}
+    web_app = FastAPI()
 
+    origins = [
+        "http://localhost",
+        "http://localhost:5173",
+    ]
 
-@app.post("/search")
-async def search(query: SearchRequest):
+    web_app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
-    async def event_generator():
-        async for stage in VisionRAG.run_vrag(query.query):
-            yield stage
+    qdrant = InMemoryQdrant()
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    VisionRAG = VRAG(colpali=colpali, qdrant=qdrant)
+
+    @web_app.post("/collections")
+    async def create_collection(files: list[UploadFile] = File(...)):
+        name = str(uuid.uuid4())
+        filenames = []
+        byte_files = []
+
+        async def read_files():
+            for file in files:
+                content = await file.read()
+                filenames.append(file.filename or "file has no name")
+                byte_files.append((name, file.filename or "file has no name", content))
+
+        await read_files()
+
+        async def event_generator():
+            yield ServerSentEvent(
+                data=json.dumps({"message": f"Indexing {len(byte_files)} files"})
+            )
+            for idx, byte_file in enumerate(byte_files):
+                yield ServerSentEvent(
+                    data=json.dumps(
+                        {"message": f"Indexing file {idx + 1} / {len(byte_files)}"}
+                    )
+                )
+                try:
+                    async for state in VisionRAG.add_pdf(*byte_file):
+                        yield state
+                except Exception as e:
+                    yield json.dumps({"error": str(e)})
+            yield ServerSentEvent(
+                data=json.dumps({"id": name, "filenames": filenames}), event="complete"
+            )
+
+        return EventSourceResponse(event_generator())
+
+    @web_app.post("/search")
+    async def search(query: SearchRequest):
+        can_query = await qdrant.does_collection_exist(str(query.instance_id))
+
+        async def event_generator():
+            if not can_query:
+                yield ServerSentEvent(
+                    data=json.dumps(
+                        {
+                            "message": "The index has been deleted or does not exist. Please re-add the files."
+                        }
+                    )
+                )
+                return
+            async for stage in VisionRAG.run_vrag(str(query.instance_id), query.query):
+                yield stage
+
+        return EventSourceResponse(event_generator())
+
+    web_app.mount("/", StaticFiles(directory="/assets", html=True))
+    return web_app

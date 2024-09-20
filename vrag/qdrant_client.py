@@ -2,18 +2,20 @@ import uuid
 from pydantic import BaseModel
 from qdrant_client import AsyncQdrantClient, models
 from typing import Any
-import numpy as np
 
 
 class Result(BaseModel):
     id: int | str
     score: float
-    payload: dict[str, Any] | None
+    payload: dict[str, Any]
 
 
 class InMemoryQdrant:
     def __init__(self) -> None:
         self.client = AsyncQdrantClient(":memory:")
+
+    async def does_collection_exist(self, name: str) -> bool:
+        return await self.client.collection_exists(name)
 
     async def create_collection(self, name: str):
         exists = await self.client.collection_exists(name)
@@ -35,12 +37,9 @@ class InMemoryQdrant:
     async def search_collection(
         self, collection: str, query_vector: list[list[float]]
     ) -> list[Result]:
-        result = await self.client.query_points(
-            collection,
-            query=query_vector,
-        )
+        result = await self.client.query_points(collection, query=query_vector, limit=3)
         return [
-            Result(id=point.id, score=point.score, payload=point.payload)
+            Result(id=point.id, score=point.score, payload=point.payload or {})
             for point in result.points
         ]
 
