@@ -19,9 +19,9 @@ class VRAG:
         self.openai = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
     async def run_vrag(
-        self, collection_name: str, query: str
+        self, collection_name: str, query: str, count: int = 3
     ) -> AsyncGenerator[ServerSentEvent, None]:
-        results = await self.search(collection_name, query)
+        results = await self.search(collection_name, query, count)
         yield ServerSentEvent(
             data=json.dumps(
                 {
@@ -84,9 +84,13 @@ class VRAG:
         )
 
     # retrieve data
-    async def search(self, collection_name: str, query: str) -> list[Result]:
+    async def search(
+        self, collection_name: str, query: str, count: int
+    ) -> list[Result]:
         query_vector = await self.colpali.embed_queries.remote.aio([query])
-        results = await self.qdrant.search_collection(collection_name, query_vector)
+        results = await self.qdrant.search_collection(
+            collection_name, query_vector, count
+        )
         return results
 
     # augment

@@ -50,6 +50,7 @@ def web():
     class SearchRequest(BaseModel):
         query: str
         instance_id: UUID
+        count: int = 3
 
     web_app = FastAPI()
 
@@ -119,7 +120,7 @@ def web():
                     )
                 )
                 return
-            async for stage in VisionRAG.run_vrag(str(query.instance_id), query.query):
+            async for stage in VisionRAG.run_vrag(str(query.instance_id), query.query, query.count):
                 yield stage
 
         return EventSourceResponse(event_generator())

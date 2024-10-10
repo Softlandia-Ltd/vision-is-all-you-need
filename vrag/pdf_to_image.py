@@ -14,10 +14,11 @@ def images_from_pdf_path(pdf_path: str) -> list[np.ndarray]:
 
 def images_from_document(document: pdfium.PdfDocument) -> list[np.ndarray]:
     images = []
+    scale = 92 / 72
 
     for i in range(len(document)):
         page = document[i]
-        img = page.render(scale=2, rev_byteorder=True).to_numpy()
+        img = page.render(scale=scale, rev_byteorder=True).to_numpy()  # type: ignore
         images.append(img)
 
     return images

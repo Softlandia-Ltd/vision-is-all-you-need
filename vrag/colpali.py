@@ -79,7 +79,6 @@ class ColPaliModel:
         )
 
         self.model_name = "vidore/colpali-v1.2"
-        self.base_model = "vidore/colpaligemma-3b-pt-448-base"
         self.model: PreTrainedModel
         self.token = os.environ.get("HF_TOKEN")
         self.processor: ColPaliProcessor
@@ -102,13 +101,11 @@ class ColPaliModel:
             torch_type = torch.float32
 
         self.model = ColPali.from_pretrained(
-            self.base_model,
+            self.model_name,
             torch_dtype=torch_type,
             device_map=device,
             token=self.token,
         ).eval()
-
-        self.model.load_adapter(self.model_name)
 
         self.processor = cast(
             ColPaliProcessor,

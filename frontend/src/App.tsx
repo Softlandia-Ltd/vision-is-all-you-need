@@ -17,6 +17,7 @@ import {
   ScrollArea,
   Skeleton,
   Flex,
+  Slider,
 } from "@mantine/core";
 import { theme } from "./theme";
 import Header from "./Header/Header";
@@ -39,6 +40,7 @@ type UploadResponse = {
 type SearchRequest = {
   query: string;
   instance_id: string;
+  count: number;
 };
 
 type SearchResponse = {
@@ -64,6 +66,7 @@ export default function App() {
   const [collection, setCollection] = useState<string | null>(null);
   const [response, setResponse] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
+  const [sourceCount, setSourceCount] = useState<number>(3);
 
   const handleQuestionSubmit = async (question: string) => {
     setResponse(null);
@@ -71,7 +74,7 @@ export default function App() {
     setSources([]);
     await api.postStream<SearchRequest, SearchResponse | Results>(
       "search",
-      { query: question, instance_id: collection ?? "" },
+      { query: question, instance_id: collection ?? "", count: sourceCount },
       (data, event) => {
         if (event === "sources") {
           setSources((data as Results).results);
@@ -131,12 +134,7 @@ export default function App() {
                 onSubmit={(files) => handleFilesUpload(files)}
               />
             )}
-            <Group
-              w="100%"
-              justify="center"
-              align="center"
-              gap="md"
-            >
+            <Group w="100%" justify="center" align="center" gap="md">
               {uploadedFiles.map((filename) => (
                 <Badge
                   key={filename}
@@ -235,8 +233,29 @@ export default function App() {
             className={classes.sources}
           >
             <Text fz={{ base: "md", sm: "xl" }}>
-              Top 3 sources for the LLM that matched the question
+              Fetch top {sourceCount} sources
             </Text>
+            <Slider
+              color="orange"
+              defaultValue={3}
+              step={1}
+              onChange={(value) => setSourceCount(value)}
+              value={sourceCount}
+              min={3}
+              max={10}
+              pb={"xl"}
+              disabled={loading}
+              marks={[
+                { value: 3, label: "3" },
+                { value: 4, label: "4" },
+                { value: 5, label: "5" },
+                { value: 6, label: "6" },
+                { value: 7, label: "7" },
+                { value: 8, label: "8" },
+                { value: 9, label: "9" },
+                { value: 10, label: "10" },
+              ]}
+            />
             {sources.length > 0 && (
               <ScrollArea h="100%" mah="100%">
                 {sources.map((source) => (

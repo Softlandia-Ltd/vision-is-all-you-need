@@ -35,9 +35,11 @@ class InMemoryQdrant:
         )
 
     async def search_collection(
-        self, collection: str, query_vector: list[list[float]]
+        self, collection: str, query_vector: list[list[float]], count: int
     ) -> list[Result]:
-        result = await self.client.query_points(collection, query=query_vector, limit=3)
+        result = await self.client.query_points(
+            collection, query=query_vector, limit=count
+        )
         return [
             Result(id=point.id, score=point.score, payload=point.payload or {})
             for point in result.points
