@@ -17,6 +17,9 @@ export const title = style({
     [vars.smallerThan("md")]: {
       fontSize: rem(25),
     },
+    [vars.smallerThan("sm")]: {
+      fontSize: rem(20),
+    },
   },
 });
 
@@ -28,9 +31,20 @@ export const header = style({
   display: "flex",
   justifyContent: "center",
   alignItems: "center",
+  paddingBottom: 5,
   selectors: {
     [vars.darkSelector]: {
       borderBottomColor: vars.colors.dark[4],
+    },
+  },
+  "@media": {
+    [vars.smallerThan("md")]: {
+      height: 90,
+      paddingBottom: 10,
+    },
+    [vars.smallerThan("sm")]: {
+      height: 90,
+      paddingBottom: 10,
     },
   },
 });

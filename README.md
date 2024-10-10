@@ -6,7 +6,8 @@ The V-RAG architecture utilizes a vision language model (VLM) to embed pages of 
 
 # How does V-RAG work?
 
-1. The pages of a PDF file are converted to images.
+1. The pages of a PDF file are converted to images. 
+   - In theory these images can be anything, but the current demo uses PDF files since the underlying model has been trained on PDF files
    - `pypdfium` is used to convert the PDF pages to images
 2. The images are passed through a VLM to get the embeddings.
    - ColPali is used as the VLM in this demo
@@ -21,9 +22,8 @@ The V-RAG architecture utilizes a vision language model (VLM) to embed pages of 
 
 # How to run the demo?
 
-Make sure tou have an account in Hugging Face. You need to ask for access to the PaliGemma model here: https://huggingface.co/google/paligemma-3b-mix-448
+Make sure tou have an account in Hugging Face. Make sure you are logged into Hugging Face using `transformers-cli login`.
 
-Then, make sure you are logged into Hugging Face using `transformers-cli login`.
 For OpenAI API, you need to have an API key. You can get it from here: https://platform.openai.com/account/api-keys
 
 You can place the keys to the dotenv file:
@@ -51,6 +51,8 @@ Then, you can run the demo by following these steps:
 This will index the PDF file in to in-memory vector database. This will take some time depending on the size of the PDF file and the GPU you are using in Modal. The current demo is using a A10G GPU.
 
 You can now search for similar pages using the `POST /search` endpoint.
+
+The endpoint send the page images and the query to the OpenAI API and returns the response. 
 
 # Frontend
 

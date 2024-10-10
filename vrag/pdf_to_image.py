@@ -17,7 +17,7 @@ def images_from_document(document: pdfium.PdfDocument) -> list[np.ndarray]:
 
     for i in range(len(document)):
         page = document[i]
-        img = page.render(scale=2).to_numpy()
+        img = page.render(scale=2, rev_byteorder=True).to_numpy()
         images.append(img)
 
     return images

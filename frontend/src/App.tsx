@@ -16,6 +16,7 @@ import {
   Text,
   ScrollArea,
   Skeleton,
+  Flex,
 } from "@mantine/core";
 import { theme } from "./theme";
 import Header from "./Header/Header";
@@ -93,7 +94,7 @@ export default function App() {
       "collections",
       formData,
       (data, event) => {
-        if (data.message !== "") {
+        if (data.message && data.message !== "") {
           setUploadStatus(data.message);
         }
         if (event === "complete") {
@@ -107,7 +108,7 @@ export default function App() {
 
   return (
     <MantineProvider theme={theme}>
-      <Stack w="100%" h="100%" p="sm">
+      <Stack w="100%" h="100%" p={{ base: "xs", sm: "sm" }}>
         <Header />
         <Group grow w="100%" justify="center" mah={"100%"}>
           <Box pos="relative">
@@ -130,7 +131,12 @@ export default function App() {
                 onSubmit={(files) => handleFilesUpload(files)}
               />
             )}
-            <Group w="100%" justify="center" align="center" gap="xl">
+            <Group
+              w="100%"
+              justify="center"
+              align="center"
+              gap="md"
+            >
               {uploadedFiles.map((filename) => (
                 <Badge
                   key={filename}
@@ -159,8 +165,22 @@ export default function App() {
           </Box>
         </Group>
         <Divider />
-        <Group grow w="100%" mah="100%" h="100%" mih={0} justify="center">
-          <Stack h="100%" mah="100%" pr="md" w="48%" miw="48%">
+        <Flex
+          direction={{ base: "column", sm: "row" }}
+          w="100%"
+          mah="100%"
+          h="100%"
+          mih={0}
+          justify="space-between"
+        >
+          <Stack
+            h={{ base: "50%", sm: "100%" }}
+            mah="100%"
+            pr={{ base: "none", sm: "md" }}
+            w={{ base: "100%", sm: "48%" }}
+            miw={{ base: "100%", sm: "48%" }}
+            pb={{ base: "sm", md: "none", xl: "none", lg: "none" }}
+          >
             <Question
               onSubmit={handleQuestionSubmit}
               loading={loading}
@@ -193,18 +213,28 @@ export default function App() {
               </ScrollArea>
             )}
           </Stack>
-          <Divider orientation="vertical" maw="1px" />
+          <Divider
+            display={{ base: "none", sm: "block" }}
+            orientation="vertical"
+            maw="1px"
+          />
+          <Divider
+            display={{ base: "block", sm: "none" }}
+            orientation="horizontal"
+            mah="1px"
+          />
           <Stack
             h="100%"
             mah="100%"
-            w="48%"
-            miw="48%"
+            w={{ base: "100%", sm: "48%" }}
+            miw={{ base: "100%", sm: "48%" }}
             gap="md"
             pl="md"
             pr="md"
+            pt={{ base: "xs", md: "none", xl: "none", lg: "none" }}
             className={classes.sources}
           >
-            <Text size="xl">
+            <Text fz={{ base: "md", sm: "xl" }}>
               Top 3 sources for the LLM that matched the question
             </Text>
             {sources.length > 0 && (
@@ -231,7 +261,7 @@ export default function App() {
               <Skeleton height={"100%"} width={"100%"} visible={loading} />
             )}
           </Stack>
-        </Group>
+        </Flex>
       </Stack>
     </MantineProvider>
   );

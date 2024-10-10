@@ -79,9 +79,9 @@ class ColPaliModel:
         )
 
         self.model_name = "vidore/colpali-v1.2"
-        self.hf_model = "vidore/colpaligemma-3b-pt-448-base"
-        self.token = os.environ.get("HF_TOKEN")
+        self.base_model = "vidore/colpaligemma-3b-pt-448-base"
         self.model: PreTrainedModel
+        self.token = os.environ.get("HF_TOKEN")
         self.processor: ColPaliProcessor
         self.mock_image = self.create_mock_image()
 
@@ -102,20 +102,18 @@ class ColPaliModel:
             torch_type = torch.float32
 
         self.model = ColPali.from_pretrained(
-            self.hf_model,
+            self.base_model,
             torch_dtype=torch_type,
             device_map=device,
             token=self.token,
-        )
+        ).eval()
 
         self.model.load_adapter(self.model_name)
 
         self.processor = cast(
             ColPaliProcessor,
-            ColPaliProcessor.from_pretrained("google/paligemma-3b-mix-448"),
+            ColPaliProcessor.from_pretrained(self.model_name),
         )
-
-        self.model.eval()
 
     def create_mock_image(self):
         import numpy as np
@@ -193,8 +191,8 @@ class ColPaliModel:
                 embedding_query = self.model(**batch_query)
             query_embeddings.extend(torch.unbind(embedding_query.to("cpu")))
 
-        embeddings = [tensor.tolist() for tensor in query_embeddings]
-        return embeddings[0]
+        embeddings = query_embeddings[0].tolist()
+        return embeddings
 
     @modal.method()
     async def embed_images(

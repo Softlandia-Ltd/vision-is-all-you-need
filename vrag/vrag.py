@@ -49,28 +49,32 @@ class VRAG:
         await self.qdrant.create_collection(collection_name)
 
         embeddings: list[list[list[float]]] = []
-        idx = 1
-        batch_size = 2
+        idx = 0
+        batch_size = 4
         images = images_from_pdf_bytes(pdf)
+        count = len(images)
 
         yield ServerSentEvent(
-            data=json.dumps({"message": f"Indexing page {idx} / {len(images)}"})
+            data=json.dumps({"message": f"0 % of {count} pages indexed...\n"})
         )
+
         async for embedding in self.colpali.embed_images.remote_gen.aio(
             images, batch_size
         ):
             embeddings.append(embedding)
             idx += batch_size
-            if idx <= len(images):
+            if idx < count:
+                percent = int(idx / count * 100)
                 yield ServerSentEvent(
                     data=json.dumps(
-                        {"message": f"Indexing page {idx + 1} / {len(images)}\n"}
+                        {"message": f"{percent} % of {count} pages indexed...\n"}
                     )
                 )
 
         encoded_images = []
 
         for img in images:
+            img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
             img = cv2.imencode(".jpg", img)[1]
             img = base64.b64encode(img).decode("utf-8")  # type: ignore
             encoded_images.append(img)
@@ -124,7 +128,7 @@ class VRAG:
         self, query: list[ChatCompletionMessageParam]
     ) -> AsyncGenerator[ServerSentEvent, None]:
         stream = self.openai.chat.completions.create(
-            model="gpt-4o-mini", messages=query, stream=True
+            model="gpt-4o", messages=query, stream=True
         )
 
         for chunk in stream:

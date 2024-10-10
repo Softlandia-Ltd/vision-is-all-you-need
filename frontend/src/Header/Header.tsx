@@ -6,6 +6,7 @@ import {
   useMantineColorScheme,
   ActionIcon,
   Tooltip,
+  Flex,
 } from "@mantine/core";
 import * as classes from "./Header.css";
 import { ColorSchemeToggle } from "../ColorSchemeToggle/ColorSchemeToggle";
@@ -17,43 +18,53 @@ export default function Header() {
   return (
     <header className={classes.header}>
       <Group w="100%" gap="lg">
-        <Title className={classes.title} ta="center">
-          <Text
-            inherit
-            variant="gradient"
-            component="span"
-            gradient={{ from: "pink", to: "yellow" }}
-          >
-            Vision is All You Need
-          </Text>
-        </Title>
-        <Title ta="center">
-          <Text
-            fz="lg"
-            c="dimmed"
-            variant="gradient"
-            gradient={{ from: "pink", to: "yellow" }}
-          >
-            by
-          </Text>
-        </Title>
-        <a href="https://softlandia.fi">
-          {colorScheme === "dark" ? (
-            <Image
-              h="30"
-              w="auto"
-              fit="contain"
-              src={"/softlandia_logo_h_white_1.png"}
-            />
-          ) : (
-            <Image
-              h="30"
-              w="auto"
-              fit="contain"
-              src={"/Softlandia_logo_Hor_color_small.png"}
-            />
-          )}
-        </a>
+        <Flex
+          direction={{ base: "column", sm: "row" }}
+          align="center"
+          gap={{ base: 5, sm: "none" }}
+        >
+          <Group w="100%" gap="lg" pr={{ base: "none", sm: "md" }}>
+            <Title className={classes.title} ta="center">
+              <Text
+                inherit
+                variant="gradient"
+                component="span"
+                gradient={{ from: "pink", to: "yellow" }}
+              >
+                Vision is All You Need
+              </Text>
+            </Title>
+          </Group>
+          <Group wrap="nowrap">
+            <Title ta="center">
+              <Text
+                fz={{ base: "sm", sm: "lg" }}
+                c="dimmed"
+                variant="gradient"
+                gradient={{ from: "pink", to: "yellow" }}
+              >
+                by
+              </Text>
+            </Title>
+            <a href="https://softlandia.fi">
+              {colorScheme === "dark" ? (
+                <Image
+                  h={{ base: 20, sm: 30 }}
+                  w="auto"
+                  fit="contain"
+                  src={"/softlandia_logo_h_white_1.png"}
+                />
+              ) : (
+                <Image
+                  h={{ base: 20, sm: 30 }}
+                  w="auto"
+                  fit="contain"
+                  src={"/Softlandia_logo_Hor_color_small.png"}
+                />
+              )}
+            </a>
+          </Group>
+        </Flex>
         <Group ml={"auto"}>
           <Tooltip label="Background blog post">
             <ActionIcon
