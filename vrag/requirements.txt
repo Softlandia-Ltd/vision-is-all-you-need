@@ -1,9 +1,0 @@
-colpali_engine==0.3.0
-numpy==2.1.1
-openai==1.44.1
-opencv_python_headless==4.10.0.84
-pydantic==2.9.1
-pypdfium2==4.30.0
-torch
-tqdm==4.66.5
-transformers==4.44.2

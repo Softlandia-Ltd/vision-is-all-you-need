@@ -1,5 +1,5 @@
 import { style } from "@vanilla-extract/css";
-import { vars } from "./../theme"; // Assuming your theme setup is here
+import { vars } from "./../theme";
 
 export const icon = style({
   width: "22px",
@@ -9,10 +9,10 @@ export const icon = style({
 export const dark = style({
   selectors: {
     [vars.darkSelector]: {
-      display: "none", // Hidden in dark mode
+      display: "none",
     },
     [vars.lightSelector]: {
-      display: "block", // Visible in light mode
+      display: "block",
     },
   },
 });
@@ -20,10 +20,10 @@ export const dark = style({
 export const light = style({
   selectors: {
     [vars.lightSelector]: {
-      display: "none", // Hidden in light mode
+      display: "none",
     },
     [vars.darkSelector]: {
-      display: "block", // Visible in dark mode
+      display: "block",
     },
   },
 });

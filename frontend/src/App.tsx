@@ -11,25 +11,28 @@ import {
   Loader,
   LoadingOverlay,
   MantineProvider,
-  Image,
+  Image as MantineImage,
   Stack,
   Text,
   ScrollArea,
   Skeleton,
   Flex,
   Slider,
+  Chip,
+  SegmentedControl,
 } from "@mantine/core";
 import { theme } from "./theme";
 import Header from "./Header/Header";
 import { DropzoneBox } from "./Dropzone/Dropzone";
 import { Question } from "./Question/Question";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { dark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import * as api from "./api";
 import { IconClearAll } from "@tabler/icons-react";
 import * as classes from "./App.css";
+import { AttentionMap } from "./AttentionMap/AttentionMap";
 
 type UploadResponse = {
   id: string;
@@ -58,6 +61,16 @@ type Results = {
   results: Source[];
 };
 
+type AttentionMap = {
+  token: string;
+  attention_map: number[][];
+};
+
+type Heatmaps = {
+  query_tokens: string[];
+  heatmaps: AttentionMap[][];
+};
+
 export default function App() {
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -67,17 +80,26 @@ export default function App() {
   const [response, setResponse] = useState<string | null>(null);
   const [sources, setSources] = useState<Source[]>([]);
   const [sourceCount, setSourceCount] = useState<number>(3);
+  const [heatmaps, setHeatmaps] = useState<Heatmaps | null>(null);
+  const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(0);
+  const [tokenMaps, setTokenMaps] = useState<number[][][][] | null>(null);
+  const [currentMap, setCurrentMap] = useState<number>(0);
+  const [color, setColor] = useState<"red" | "blue" | "green">("red");
+  const [opacity, setOpacity] = useState<number>(60);
 
   const handleQuestionSubmit = async (question: string) => {
     setResponse(null);
     setLoading(true);
     setSources([]);
-    await api.postStream<SearchRequest, SearchResponse | Results>(
+    await api.postStream<SearchRequest, SearchResponse | Results | string>(
       "search",
       { query: question, instance_id: collection ?? "", count: sourceCount },
       (data, event) => {
         if (event === "sources") {
           setSources((data as Results).results);
+        } else if (event === "heatmaps") {
+          setHeatmaps(JSON.parse(data as string) as Heatmaps);
         } else {
           setResponse((old) => {
             const res = data as SearchResponse;
@@ -103,11 +125,50 @@ export default function App() {
         if (event === "complete") {
           setUploadedFiles(data.filenames);
           setCollection(data.id);
+          setUploadStatus("");
         }
       }
     );
     setUploading(false);
   };
+
+  useEffect(() => {
+    if (heatmaps) {
+      const newTokenMaps: number[][][][] = [];
+
+      const mapHeight = 32;
+      const mapWidth = 32;
+
+      heatmaps.heatmaps.forEach((imageHeatmaps) => {
+        const tokenMapsForImage: number[][][] = [];
+        const combinedAttentionMap: number[][] = [];
+
+        for (let i = 0; i < mapHeight; i++) {
+          combinedAttentionMap.push(new Array(mapWidth).fill(0));
+        }
+
+        imageHeatmaps.forEach((heatmap) => {
+          const tokenMap: number[][] = [];
+          for (let i = 0; i < mapHeight; i++) {
+            tokenMap.push(new Array(mapWidth).fill(0));
+          }
+
+          heatmap.attention_map.forEach((row, rowIndex) => {
+            row.forEach((value, colIndex) => {
+              combinedAttentionMap[rowIndex][colIndex] += value;
+              tokenMap[rowIndex][colIndex] = value;
+            });
+          });
+
+          tokenMapsForImage.push(tokenMap);
+        });
+
+        newTokenMaps.push(tokenMapsForImage);
+      });
+
+      setTokenMaps(newTokenMaps);
+    }
+  }, [heatmaps, width, height]);
 
   return (
     <MantineProvider theme={theme}>
@@ -232,33 +293,85 @@ export default function App() {
             pt={{ base: "xs", md: "none", xl: "none", lg: "none" }}
             className={classes.sources}
           >
-            <Text fz={{ base: "md", sm: "xl" }}>
-              Fetch top {sourceCount} sources
-            </Text>
-            <Slider
-              color="orange"
-              defaultValue={3}
-              step={1}
-              onChange={(value) => setSourceCount(value)}
-              value={sourceCount}
-              min={3}
-              max={10}
-              pb={"xl"}
-              disabled={loading}
-              marks={[
-                { value: 3, label: "3" },
-                { value: 4, label: "4" },
-                { value: 5, label: "5" },
-                { value: 6, label: "6" },
-                { value: 7, label: "7" },
-                { value: 8, label: "8" },
-                { value: 9, label: "9" },
-                { value: 10, label: "10" },
-              ]}
-            />
+            <Stack>
+              <Group grow justify="space-between" gap="xl">
+                <Stack>
+                  <Text fz={{ base: "md", sm: "xl" }}>
+                    Using top {sourceCount} matches
+                  </Text>
+                  <Slider
+                    color="orange"
+                    defaultValue={3}
+                    size={"sm"}
+                    step={1}
+                    onChange={(value) => setSourceCount(value)}
+                    value={sourceCount}
+                    min={3}
+                    max={10}
+                    pb={"xl"}
+                    disabled={loading}
+                    marks={[
+                      { value: 3, label: "3" },
+                      { value: 4, label: "4" },
+                      { value: 5, label: "5" },
+                      { value: 6, label: "6" },
+                      { value: 7, label: "7" },
+                      { value: 8, label: "8" },
+                      { value: 9, label: "9" },
+                      { value: 10, label: "10" },
+                    ]}
+                  />
+                </Stack>
+                <Stack gap="sm">
+                  <Text size="sm" fw={500}>
+                    Heatmap color
+                  </Text>
+                  <SegmentedControl
+                    value={color}
+                    color={color}
+                    size="xs"
+                    variant="light"
+                    onChange={(val) =>
+                      setColor(val as "red" | "blue" | "green")
+                    }
+                    data={[
+                      { label: "Red", value: "red" },
+                      { label: "Green", value: "green" },
+                      { label: "Blue", value: "blue" },
+                    ]}
+                  />
+                  <Slider
+                    color="orange"
+                    label="Heatmap opacity"
+                    size="xs"
+                    value={opacity}
+                    onChange={(value) => setOpacity(value)}
+                    marks={[
+                      { value: 20, label: "20%" },
+                      { value: 50, label: "50%" },
+                      { value: 80, label: "80%" },
+                    ]}
+                  />
+                </Stack>
+              </Group>
+              <Group pt="md">
+                {heatmaps?.query_tokens.map((token, idx) => (
+                  <Chip
+                    key={idx}
+                    color="grape"
+                    size="sm"
+                    checked={idx == currentMap}
+                    radius="xl"
+                    onChange={() => setCurrentMap(idx)}
+                  >
+                    {token}
+                  </Chip>
+                ))}
+              </Group>
+            </Stack>
             {sources.length > 0 && (
               <ScrollArea h="100%" mah="100%">
-                {sources.map((source) => (
+                {sources.map((source, idx) => (
                   <Card shadow="sm" padding="lg" radius="md" mb="lg" withBorder>
                     <Group justify="space-between" pb="md">
                       <Text fw={500}>
@@ -266,10 +379,24 @@ export default function App() {
                       </Text>
                       <Badge color="pink">Score {source.score}</Badge>
                     </Group>
-                    <Card.Section>
-                      <Image
+                    <Card.Section style={{ position: "relative" }}>
+                      {/* Original Image */}
+                      <MantineImage
                         src={"data:image/jpeg;base64," + source.image}
                         height={"100%"}
+                        width={"100%"}
+                        alt="Original image"
+                        onLoad={(img) => {
+                          setWidth(img.currentTarget.width);
+                          setHeight(img.currentTarget.height);
+                        }}
+                      />
+                      <AttentionMap
+                        tokenMap={tokenMaps?.[idx]?.[currentMap] ?? null}
+                        width={width}
+                        height={height}
+                        color={color}
+                        opacity={opacity}
                       />
                     </Card.Section>
                   </Card>

@@ -10,8 +10,11 @@ img = (
         "colpali_engine==0.3.0",
         "torch",
         "transformers==4.44.2",
+        "einops==0.8.0",
+        "vidore_benchmark==4.0.1",
     )
     .pip_install("numpy==2.1.1")
+    .pip_install("opencv_python_headless==4.10.0.84")
 )
 
 
@@ -74,7 +77,7 @@ def create_stringlist_dataset_class(string_list: list[str]):
 class ColPaliModel:
     def __init__(self):
         from transformers import PreTrainedModel
-        from colpali_engine.models.paligemma.colpali.processing_colpali import (
+        from colpali_engine.models import (
             ColPaliProcessor,
         )
 
@@ -89,7 +92,7 @@ class ColPaliModel:
     def load_model(self):
         import torch
         from colpali_engine.models import ColPali
-        from colpali_engine.models.paligemma.colpali.processing_colpali import (
+        from colpali_engine.models import (
             ColPaliProcessor,
         )
 
@@ -214,3 +217,136 @@ class ColPaliModel:
                 0
             ].tolist()
             yield value
+
+    @modal.method()
+    def generate_heatmaps(self, images: list[str], query: str):
+        import cv2
+        import numpy as np
+        import base64
+
+        heatmaps: list = []
+
+        for image in images:
+            b = base64.b64decode(image)
+            data = np.frombuffer(b, np.uint8)
+            img = cv2.imdecode(data, cv2.IMREAD_COLOR)
+            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            output_text, query_tokens_list = self.process_text_similarity(query)
+            attention_json = self.generate_interpretability_json(
+                output_text, query_tokens_list, rgb
+            )
+            heatmaps.append(attention_json)
+
+        return {
+            "heatmaps": heatmaps,
+            "query_tokens": [token for token in query_tokens_list if token != ""],
+        }
+
+    @staticmethod
+    def is_special_token(token: str) -> bool:
+        # Check if the token meets any of the special conditions
+        if len(token) < 3:
+            return True
+        if token.startswith("<"):
+            return True
+        if token.isdigit():
+            return True
+        if token.isspace():
+            return True
+        if len(token) == 1:
+            return True
+        if token == "Question":
+            return True
+        return False
+
+    def process_text_similarity(self, query):
+        import torch
+
+        input_text_processed = self.processor.process_queries([query]).to(
+            self.model.device
+        )
+
+        with torch.no_grad():
+            output_text = self.model.forward(
+                **input_text_processed
+            )  # (1, query_tokens, dim)
+
+        query_tokens_list = self.processor.tokenizer.tokenize(  # type: ignore
+            self.processor.decode(input_text_processed.input_ids[0])
+        )
+
+        # Mark special tokens as empty strings
+        query_tokens_list = [
+            "" if ColPaliModel.is_special_token(token) else token
+            for token in query_tokens_list
+        ]
+
+        return output_text, query_tokens_list
+
+    def generate_interpretability_json(
+        self, output_text, query_tokens_list, image
+    ) -> list:
+        """
+        Generates attention heatmap JSON for a query and image pair using the model.
+        Modified version of the function gen_and_save_similarity_map_per_token from vidore_benchmark repo.
+        See: https://github.com/illuin-tech/vidore-benchmark/blob/main/src/vidore_benchmark/interpretability/gen_similarity_maps.py
+        """
+        import cv2
+        from einops import rearrange
+        from vidore_benchmark.interpretability.torch_utils import (
+            normalize_similarity_map_per_query_token,
+        )
+        import torch
+        import numpy.typing as npt
+
+        patch_size = 14
+        resolution = 448
+        n_patch_per_dim = resolution // patch_size
+        input_image_square = cv2.resize(image, (resolution, resolution))
+        input_image_processed = self.process_images([input_image_square]).to(
+            self.model.device
+        )
+
+        with torch.no_grad():
+            output_image = self.model.forward(
+                **input_image_processed
+            )  # (1, n_patches_x * n_patches_y, dim)
+
+        # Remove the special tokens from the output
+        output_image = output_image[
+            :, : self.processor.image_seq_length, :
+        ]  # (1, n_patches_x * n_patches_y, dim)
+
+        # Rearrange the output image tensor to explicitly represent the 2D grid of patches
+        output_image = rearrange(
+            output_image, "b (h w) c -> b h w c", h=n_patch_per_dim, w=n_patch_per_dim
+        )  # (1, n_patches_x, n_patches_y, dim)
+
+        # Get the similarity map
+        similarity_map = torch.einsum(
+            "bnk,bijk->bnij", output_text, output_image
+        )  # (1, query_tokens, n_patches_x, n_patches_y)
+
+        # Normalize the similarity map
+        similarity_map_normalized = normalize_similarity_map_per_query_token(
+            similarity_map
+        )  # (1, query_tokens, n_patches_x, n_patches_y)
+
+        # Prepare the attention map data as a JSON structure
+        attention_data = []
+        sim_map = cast(
+            npt.NDArray, similarity_map_normalized.to(torch.float32).cpu().numpy()
+        )
+
+        # Iterate over the tokens and collect similarity map data for each token
+        for token_idx, token in enumerate(query_tokens_list):
+            # skip special tokens
+            if token == "":
+                continue
+            token_data = {
+                "token": query_tokens_list[token_idx],
+                "attention_map": sim_map[0, token_idx, :, :].tolist(),
+            }
+            attention_data.append(token_data)
+
+        return attention_data
