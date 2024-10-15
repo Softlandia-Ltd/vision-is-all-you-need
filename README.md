@@ -4,7 +4,7 @@ This is a demo of the Vision RAG (V-RAG) architecture.
 
 The V-RAG architecture utilizes a vision language model (VLM) to embed pages of PDF files (or any other document) as vectors directly, without the tedious chunking process.
 
-![Screenshot 2024-10-15 145217](https://github.com/user-attachments/assets/ec153fe7-35eb-4064-a587-3bd1c16b6c79)
+![Screenshot 2024-10-15 145540](https://github.com/user-attachments/assets/ed834b36-843f-43a4-876b-a30b0c1b88af)
 
 # How does V-RAG work?
 
