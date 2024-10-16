@@ -10,7 +10,7 @@ Check out the background blog post: https://softlandia.fi/en/blog/building-a-rag
 
 # How does V-RAG work?
 
-1. The pages of a PDF file are converted to images. 
+1. The pages of a PDF file are converted to images.
    - In theory these images can be anything, but the current demo uses PDF files since the underlying model has been trained on PDF files
    - `pypdfium` is used to convert the PDF pages to images
 2. The images are passed through a VLM to get the embeddings.
@@ -56,7 +56,7 @@ This will index the PDF file in to in-memory vector database. This will take som
 
 You can now search for similar pages using the `POST /search` endpoint.
 
-The endpoint send the page images and the query to the OpenAI API and returns the response. 
+The endpoint sends the page images and the query to the OpenAI API and returns the response. 
 
 # Frontend
 
@@ -74,6 +74,6 @@ This will start the frontend on `http://localhost:5173`
 
 You can deploy the demo to Modal using the following steps:
 
-1. Modify you `.env.production` file and add your `VITE_BACKEND_URL` for the production environment
-2. Build the frontend `npm run build` - this will create a `dist` folder
+1. Modify you `.env.production` file in `frontend` dir and add your `VITE_BACKEND_URL` for the production environment
+2. Build the frontend `npm run build` - this will create a `dist` folder with the frontend bundle
 3. `modal deploy .\main.py`
