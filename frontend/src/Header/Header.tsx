@@ -72,7 +72,7 @@ export default function Header() {
               component="a"
               variant="default"
               aria-label="Background blog post"
-              href="https://softlandia-ltd.github.io/vision-is-all-you-need/"
+              href="https://softlandia.fi/en/blog/building-a-rag-tired-of-chunking-maybe-vision-is-all-you-need"
             >
               <IconArticle />
             </ActionIcon>
