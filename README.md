@@ -6,6 +6,8 @@ The V-RAG architecture utilizes a vision language model (VLM) to embed pages of 
 
 ![Screenshot 2024-10-15 145540](https://github.com/user-attachments/assets/ed834b36-843f-43a4-876b-a30b0c1b88af)
 
+Check out the background blog post: https://softlandia.fi/en/blog/building-a-rag-tired-of-chunking-maybe-vision-is-all-you-need
+
 # How does V-RAG work?
 
 1. The pages of a PDF file are converted to images. 
