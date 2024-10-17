@@ -92,6 +92,9 @@ export default function App() {
     setResponse(null);
     setLoading(true);
     setSources([]);
+    setHeatmaps(null);
+    setTokenMaps(null);
+    setCurrentMap(0);
     await api.postStream<SearchRequest, SearchResponse | Results | string>(
       "search",
       { query: question, instance_id: collection ?? "", count: sourceCount },
