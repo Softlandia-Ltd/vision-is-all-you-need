@@ -72,7 +72,6 @@ class VRAG:
             images, batch_size
         ):
             embeddings.append(embedding)
-            idx += batch_size
             if idx < count:
                 percent = int(idx / count * 100)
                 yield ServerSentEvent(
@@ -80,6 +79,7 @@ class VRAG:
                         {"message": f"{percent} % of {count} pages indexed...\n"}
                     )
                 )
+            idx += 1
 
         encoded_images = []
 
