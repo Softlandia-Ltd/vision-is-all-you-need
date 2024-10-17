@@ -245,15 +245,13 @@ class ColPaliModel:
     @staticmethod
     def is_special_token(token: str) -> bool:
         # Check if the token meets any of the special conditions
-        if len(token) < 3:
+        if len(token) < 2:
             return True
         if token.startswith("<"):
             return True
         if token.isdigit():
             return True
         if token.isspace():
-            return True
-        if len(token) == 1:
             return True
         if token == "Question":
             return True
