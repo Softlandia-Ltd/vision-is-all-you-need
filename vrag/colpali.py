@@ -176,7 +176,7 @@ class ColPaliModel:
 
         dataloader = DataLoader(
             create_stringlist_dataset_class(queries),
-            batch_size=2,
+            batch_size=1,
             shuffle=False,
             collate_fn=lambda x: self.process_queries(x),
         )
@@ -213,10 +213,15 @@ class ColPaliModel:
                 batch_doc = {k: v.to(self.model.device) for k, v in batch_doc.items()}
                 embeddings_doc = self.model(**batch_doc)
 
-            value: list[list[float]] = torch.unbind(embeddings_doc.to("cpu"))[
-                0
-            ].tolist()
-            yield value
+                # Shape: [batch_size, 1030, 128]
+                # Convert embeddings_doc to CPU, then iterate over the batch dimension
+                embeddings_list: list[list[list[float]]] = embeddings_doc.to(
+                    "cpu"
+                ).tolist()
+
+            # Yield each image's embeddings as a list of lists (1030 embeddings of 128 dimensions each)
+            for embedding_per_image in embeddings_list:
+                yield embedding_per_image
 
     @modal.method()
     def generate_heatmaps(self, images: list[str], query: str):
