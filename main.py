@@ -4,7 +4,7 @@ from modal import Mount, Secret, asgi_app, Image
 from vrag.app import app
 from vrag.colpali import ColPaliModel
 
-static_path = Path(__file__).with_name("frontend").resolve()
+static_path = Path(__file__).with_name("frontend").joinpath('dist').resolve()
 
 img = (
     Image.debian_slim(python_version="3.11")
