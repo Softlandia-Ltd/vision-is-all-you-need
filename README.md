@@ -44,7 +44,7 @@ Then, you can run the demo by following these steps:
 1. Install Python 3.11 or higher
 2. `pip install modal`
 3. `modal setup`
-4. `modal serve .\main.py`
+4. `modal serve \main.py`
 
 # How to use the demo from the provided API?
 
