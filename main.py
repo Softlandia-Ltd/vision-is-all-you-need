@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from modal import Mount, Secret, asgi_app, Image
+from modal import Secret, asgi_app, Image
 from vrag.app import app
 from vrag.colpali import ColPaliModel
 
@@ -18,6 +18,8 @@ img = (
         "sse-starlette==2.1.3",
     )
     .pip_install("numpy==2.1.1")
+    .add_local_python_source("vrag")
+    .add_local_dir(static_path, remote_path="/assets")
 )
 
 colpali = ColPaliModel()
@@ -25,10 +27,6 @@ colpali = ColPaliModel()
 
 @app.function(
     image=img,
-    mounts=[
-        Mount.from_local_python_packages("vrag"),
-        Mount.from_local_dir(static_path, remote_path="/assets"),
-    ],
     secrets=[Secret.from_dotenv()],
     concurrency_limit=1,
     container_idle_timeout=300,
