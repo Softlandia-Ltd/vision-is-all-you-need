@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from modal import Secret, asgi_app, Image
+from modal import Secret, asgi_app, Image, concurrent
 from vrag.app import app
 from vrag.colpali import ColPaliModel
 
@@ -31,8 +31,8 @@ colpali = ColPaliModel()
     max_containers=1,
     scaledown_window=300,
     timeout=600,
-    allow_concurrent_inputs=10,
 )
+@concurrent(max_inputs=10)
 @asgi_app()
 def web():
     from uuid import UUID
