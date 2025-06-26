@@ -29,7 +29,7 @@ colpali = ColPaliModel()
     image=img,
     secrets=[Secret.from_dotenv()],
     concurrency_limit=1,
-    container_idle_timeout=300,
+    scaledown_window=300,
     timeout=600,
     allow_concurrent_inputs=10,
 )
