@@ -28,7 +28,7 @@ colpali = ColPaliModel()
 @app.function(
     image=img,
     secrets=[Secret.from_dotenv()],
-    concurrency_limit=1,
+    max_containers=1,
     scaledown_window=300,
     timeout=600,
     allow_concurrent_inputs=10,
