@@ -71,7 +71,7 @@ def create_stringlist_dataset_class(string_list: list[str]):
     secrets=[modal.Secret.from_dotenv()],
     cpu=4,
     timeout=600,
-    container_idle_timeout=300,
+    scaledown_window=300,
     image=img,
 )
 class ColPaliModel:
