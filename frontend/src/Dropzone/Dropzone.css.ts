@@ -1,58 +1,29 @@
 import { style } from "@vanilla-extract/css";
 import { vars } from "../theme";
-
-export const wrapper = style({
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: "16px",
-  width: "100%",
-  maxWidth: "100%",
-});
+import { rem } from "@mantine/core";
 
 export const dropzone = style({
   width: "100%",
-  padding: "20px",
-  border: `2px dashed ${vars.colors.gray[4]}`,
+  padding: rem(12),
+  border: `1px dashed ${vars.colors.gray[4]}`,
   borderRadius: vars.radius.md,
-  transition: "background-color 0.3s ease",
-  backgroundColor: vars.colors.gray[1],
-
+  backgroundColor: "transparent",
+  transition: "background-color 150ms ease, border-color 150ms ease",
   selectors: {
     "&:hover": {
-      backgroundColor: vars.colors.gray[2],
+      backgroundColor: vars.colors.gray[0],
+      borderColor: vars.colors.coral[6],
     },
     [vars.darkSelector]: {
-      border: `2px dashed ${vars.colors.dark[4]}`,
-      backgroundColor: vars.colors.dark[7],
+      borderColor: vars.colors.dark[4],
     },
-    [vars.darkSelector + " &:hover"]: {
+    [`${vars.darkSelector}:hover`]: {
       backgroundColor: vars.colors.dark[6],
+      borderColor: vars.colors.coral[5],
     },
   },
 });
 
-export const control = style({
-  width: "200px",
-  display: "block",
-  margin: "0 auto",
-  textAlign: "center",
-  padding: "12px 24px",
-  borderRadius: vars.radius.xl,
-  backgroundColor: vars.colors.blue[6],
-  color: vars.colors.white,
-  fontSize: "16px",
-  fontWeight: 700,
-
-  selectors: {
-    "&:hover": {
-      backgroundColor: vars.colors.blue[7],
-    },
-    [vars.darkSelector]: {
-      backgroundColor: vars.colors.blue[8],
-    },
-    [vars.darkSelector + " &:hover"]: {
-      backgroundColor: vars.colors.blue[9],
-    },
-  },
+export const dropzoneLg = style({
+  padding: rem(28),
 });

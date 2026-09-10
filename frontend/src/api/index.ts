@@ -17,10 +17,10 @@ type eventSourceArgs<T> = {
 
 type eventSourceFetcherArgs<C, T> = fetcherArgs<C> & eventSourceArgs<T>;
 
-const initRequest = (args: fetcherArgs<any>) => {
+const initRequest = (args: fetcherArgs<unknown>) => {
   const { method, endpoint, body } = args;
 
-  let headers: HeadersInit = {
+  const headers: Record<string, string> = {
     accept: "application/json",
   };
 
@@ -33,11 +33,17 @@ const initRequest = (args: fetcherArgs<any>) => {
   const request = new Request(url, {
     method,
     headers,
-    body: body && !(body instanceof FormData) ? JSON.stringify(body) : body,
+    body:
+      body && !(body instanceof FormData)
+        ? JSON.stringify(body)
+        : (body as FormData | undefined),
   });
 
   return request;
 };
+
+/** Thrown to end a stream the server closed on purpose (not a failure). */
+class StreamClosed extends Error {}
 
 const fetchStream = async <C, T>(args: eventSourceFetcherArgs<C, T>) => {
   const request = initRequest(args);
@@ -46,43 +52,51 @@ const fetchStream = async <C, T>(args: eventSourceFetcherArgs<C, T>) => {
     headers[key] = value;
   });
 
-  const res = await fetchEventSource(request, {
-    headers,
-    openWhenHidden: true,
-    async onopen(response) {
-      if (response.ok && response.status === 200) {
-        args.onOpen && args.onOpen();
-      } else if (
-        response.status >= 400 &&
-        response.status < 500 &&
-        response.status !== 429
-      ) {
-        console.error("Error connecting to server", response.statusText);
-        args.onError && args.onError(new Error(response.statusText));
-      }
-    },
-    onmessage(msg) {
-      console.log(msg);
-      try {
-        args.onMessage(JSON.parse(msg.data) as T, msg.event);
-      } catch {
-        args.onMessage(msg.data as T, msg.event);
-      }
-      if (msg.event === "complete") {
-        console.log("Stream complete");
-      }
-    },
-    onclose() {
-      console.log("Connection closed by the server");
-      args.onClose && args.onClose();
-    },
-    onerror(err) {
-      console.log("There was an error from server", err);
-      args.onError && args.onError(err);
-    },
-  });
+  let reported = false;
+  const fail = (err: unknown) => {
+    if (reported) return;
+    reported = true;
+    args.onError?.(err instanceof Error ? err : new Error(String(err)));
+  };
 
-  return res;
+  try {
+    await fetchEventSource(request, {
+      headers,
+      openWhenHidden: true,
+      async onopen(response) {
+        if (response.ok && response.status === 200) {
+          args.onOpen?.();
+          return;
+        }
+        const body = await response.text().catch(() => "");
+        throw new Error(
+          `Request failed (${response.status} ${response.statusText})` +
+            (body ? `: ${body.slice(0, 300)}` : "")
+        );
+      },
+      onmessage(msg) {
+        try {
+          args.onMessage(JSON.parse(msg.data) as T, msg.event);
+        } catch {
+          args.onMessage(msg.data as T, msg.event);
+        }
+      },
+      onclose() {
+        args.onClose?.();
+        // The library retries whenever the connection ends unless we throw,
+        // which would silently re-run the whole request.
+        throw new StreamClosed();
+      },
+      onerror(err) {
+        // Rethrowing marks the error fatal; returning would retry forever.
+        throw err;
+      },
+    });
+  } catch (err) {
+    if (!(err instanceof StreamClosed)) {
+      fail(err);
+    }
+  }
 };
 
 export const postStream = async <C, T>(
