@@ -1,68 +1,86 @@
-import { useRef } from "react";
-import { Text, Group, rem, useMantineTheme } from "@mantine/core";
+import { forwardRef } from "react";
+import cx from "clsx";
+import { Text, Group, Stack, Tooltip, ActionIcon, rem } from "@mantine/core";
 import { Dropzone, MIME_TYPES } from "@mantine/dropzone";
-import { IconCloudUpload, IconX, IconDownload } from "@tabler/icons-react";
+import {
+  IconCloudUpload,
+  IconX,
+  IconDownload,
+  IconInfoCircle,
+} from "@tabler/icons-react";
 import * as classes from "./Dropzone.css";
+import { INDEXING_NOTE } from "./notes";
 
 export interface DropzoneBoxProps {
   uploading: boolean;
   onSubmit: (files: File[]) => void;
+  openRef?: React.RefObject<() => void>;
+  size?: "sm" | "lg";
 }
 
-export function DropzoneBox(props: DropzoneBoxProps) {
-  const theme = useMantineTheme();
-  const openRef = useRef<() => void>(null);
+export const DropzoneBox = forwardRef<HTMLDivElement, DropzoneBoxProps>(
+  function DropzoneBox(props, ref) {
+    const size = props.size ?? "sm";
+    const iconSize = size === "lg" ? 40 : 32;
 
-  return (
-    <div className={classes.wrapper}>
+    return (
       <Dropzone
+        ref={ref}
         disabled={props.uploading}
-        openRef={openRef}
+        openRef={props.openRef}
         onDrop={(files) => props.onSubmit(files)}
-        className={classes.dropzone}
+        className={cx(classes.dropzone, size === "lg" && classes.dropzoneLg)}
         radius="md"
         accept={[MIME_TYPES.pdf]}
         maxSize={30 * 1024 ** 2}
       >
-        <div style={{ pointerEvents: "none" }}>
-          <Group justify="center">
-            <Dropzone.Accept>
-              <IconDownload
-                style={{ width: rem(50), height: rem(50) }}
-                color={theme.colors.blue[6]}
-                stroke={1.5}
-              />
-            </Dropzone.Accept>
-            <Dropzone.Reject>
-              <IconX
-                style={{ width: rem(50), height: rem(50) }}
-                color={theme.colors.red[6]}
-                stroke={1.5}
-              />
-            </Dropzone.Reject>
-            <Dropzone.Idle>
-              <IconCloudUpload
-                style={{ width: rem(50), height: rem(50) }}
-                stroke={1.5}
-              />
-            </Dropzone.Idle>
-          </Group>
-
-          <Text ta="center" fw={700} fz="lg">
-            <Dropzone.Accept>Drop files here</Dropzone.Accept>
-            <Dropzone.Reject>Pdf file less than 30mb</Dropzone.Reject>
-            <Dropzone.Idle>Upload PDFs</Dropzone.Idle>
-          </Text>
-          <Text ta="center" fz="sm" c="dimmed">
-            Only <i>.pdf</i> files that are less than 30mb in size are accepted.
-            There's no persistent storage, the index is built on the fly and
-            will be lost when the underlying container dies. <br /> If the
-            upload takes long, it's likely that the container has been
-            terminated and you need to wait for a little while for the new
-            container to be up and running.
-          </Text>
-        </div>
+        <Group justify="center" gap="sm" style={{ pointerEvents: "none" }}>
+          <Dropzone.Accept>
+            <IconDownload
+              style={{ width: rem(iconSize), height: rem(iconSize) }}
+              stroke={1.5}
+            />
+          </Dropzone.Accept>
+          <Dropzone.Reject>
+            <IconX
+              style={{ width: rem(iconSize), height: rem(iconSize) }}
+              color="var(--mantine-color-red-6)"
+              stroke={1.5}
+            />
+          </Dropzone.Reject>
+          <Dropzone.Idle>
+            <IconCloudUpload
+              style={{ width: rem(iconSize), height: rem(iconSize) }}
+              stroke={1.5}
+            />
+          </Dropzone.Idle>
+          <Stack gap={2}>
+            <Text fw={600} fz={size === "lg" ? "md" : "sm"}>
+              <Dropzone.Accept>Drop the files here</Dropzone.Accept>
+              <Dropzone.Reject>PDF files under 30 MB only</Dropzone.Reject>
+              <Dropzone.Idle>Drop PDFs here or click to browse</Dropzone.Idle>
+            </Text>
+            <Text fz="xs" c="dimmed">
+              .pdf · max 30 MB
+            </Text>
+          </Stack>
+        </Group>
       </Dropzone>
-    </div>
+    );
+  }
+);
+
+export function IndexingNote() {
+  return (
+    <Tooltip label={INDEXING_NOTE} multiline w={280} withArrow>
+      <ActionIcon
+        variant="subtle"
+        color="gray"
+        size="sm"
+        aria-label="How indexing works"
+      >
+        <IconInfoCircle stroke={1.5} />
+      </ActionIcon>
+    </Tooltip>
   );
 }

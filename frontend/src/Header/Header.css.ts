@@ -2,49 +2,55 @@ import { style } from "@vanilla-extract/css";
 import { vars } from "../theme";
 import { rem } from "@mantine/core";
 
-export const title = style({
-  color: vars.colors.black,
-  fontSize: rem(50),
-  fontWeight: 900,
-  letterSpacing: rem(-2),
-  selectors: {
-    [vars.darkSelector]: {
-      color: vars.colors.white,
-    },
-  },
-
-  "@media": {
-    [vars.smallerThan("md")]: {
-      fontSize: rem(25),
-    },
-    [vars.smallerThan("sm")]: {
-      fontSize: rem(20),
-    },
-  },
-});
-
 export const header = style({
-  height: 60,
+  flexShrink: 0,
+  height: rem(56),
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: vars.spacing.md,
+  padding: `0 ${vars.spacing.md}`,
   backgroundColor: vars.colors.body,
   borderBottom: `1px solid ${vars.colors.gray[3]}`,
-  borderBottomColor: vars.colors.gray[3],
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  paddingBottom: 5,
   selectors: {
     [vars.darkSelector]: {
       borderBottomColor: vars.colors.dark[4],
     },
   },
-  "@media": {
-    [vars.smallerThan("md")]: {
-      height: 90,
-      paddingBottom: 10,
+});
+
+export const brand = style({
+  minWidth: 0,
+});
+
+export const separator = style({
+  width: 1,
+  height: rem(20),
+  backgroundColor: vars.colors.gray[3],
+  selectors: {
+    [vars.darkSelector]: {
+      backgroundColor: vars.colors.dark[4],
     },
-    [vars.smallerThan("sm")]: {
-      height: 90,
-      paddingBottom: 10,
+  },
+  "@media": {
+    [vars.smallerThan("xs")]: {
+      display: "none",
+    },
+  },
+});
+
+export const title = style({
+  fontSize: rem(15),
+  fontWeight: 600,
+  color: vars.colors.gray[7],
+  selectors: {
+    [vars.darkSelector]: {
+      color: vars.colors.dark[1],
+    },
+  },
+  "@media": {
+    [vars.smallerThan("xs")]: {
+      display: "none",
     },
   },
 });

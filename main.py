@@ -10,10 +10,14 @@ img = (
     Image.debian_slim(python_version="3.11")
     .pip_install(
         "openai==1.44.1",
+        # openai 1.44 still passes `proxies=` to httpx, removed in httpx 0.28
+        "httpx==0.27.2",
         "opencv_python_headless==4.10.0.84",
         "pydantic==2.9.1",
         "pypdfium2==4.30.0",
         "fastapi==0.114.2",
+        # required by FastAPI for the multipart upload endpoint
+        "python-multipart==0.0.9",
         "qdrant_client==1.11.2",
         "sse-starlette==2.1.3",
     )
