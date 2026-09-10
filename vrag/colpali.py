@@ -17,6 +17,24 @@ img = (
     .pip_install("opencv_python_headless==4.10.0.84")
 )
 
+MODEL_NAME = "vidore/colpali-v1.2"
+
+
+def download_model():
+    """Bake the model weights into the image.
+
+    Replaces the removed `@modal.build()` decorator: the weights land in the
+    image's Hugging Face cache so containers start without downloading them.
+    """
+    from colpali_engine.models import ColPali, ColPaliProcessor
+
+    token = os.environ.get("HF_TOKEN")
+    ColPali.from_pretrained(MODEL_NAME, token=token)
+    ColPaliProcessor.from_pretrained(MODEL_NAME, token=token)
+
+
+img = img.run_function(download_model, secrets=[modal.Secret.from_dotenv()])
+
 
 class NumpyDataset:
     def __init__(self, numpy_list: list):
@@ -81,13 +99,12 @@ class ColPaliModel:
             ColPaliProcessor,
         )
 
-        self.model_name = "vidore/colpali-v1.2"
+        self.model_name = MODEL_NAME
         self.model: PreTrainedModel
         self.token = os.environ.get("HF_TOKEN")
         self.processor: ColPaliProcessor
         self.mock_image = self.create_mock_image()
 
-    @modal.build()
     @modal.enter()
     def load_model(self):
         import torch
